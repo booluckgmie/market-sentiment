@@ -23,6 +23,8 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
 import feedparser, requests
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from topics import TOPICS
 
 # ---------------- EDIT ME ----------------
 KEYWORDS = [  # (keyword, domain, pipeline)  N=news/ops, A=local culture, B=inbound aesthetic
@@ -193,6 +195,10 @@ main{padding:0 14px 110px;max-width:720px;margin:0 auto}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:#ffffff26;border-radius:99px;padding:3px 10px;margin-bottom:8px;position:relative}
 .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 #4ade80aa;animation:pulse 1.8s infinite}
 @keyframes pulse{70%{box-shadow:0 0 0 8px #4ade8000}100%{box-shadow:0 0 0 0 #4ade8000}}
+.about{font-size:13px;line-height:1.4;color:var(--ink);opacity:.82;margin:9px 0 2px}
+.cps{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.cp{background:var(--chip);border-radius:8px;padding:3px 8px;font-size:11.5px;font-weight:700;color:var(--ink)}.cp i{font-style:normal;color:var(--mute);font-weight:600;margin-right:3px}
+.pp{margin-top:9px;border:1px dashed var(--acc);border-radius:12px;padding:8px 10px;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}.pp span{color:var(--mute)}
+.herolv{margin-top:10px;font-size:11.5px;opacity:.95;position:relative;background:#ffffff1f;border-radius:10px;padding:6px 10px}
 .stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative}
 .stats3 div{background:#ffffff22;border-radius:14px;padding:9px 6px;text-align:center}
 .stats3 b{display:block;font-size:22px;line-height:1.1}.stats3 span{font-size:10.5px;opacity:.92}
@@ -379,7 +385,7 @@ en:{
 'g.scope':`News scope`,'g.scope.d':`Malaysia counts the Malaysian edition of Google News only. Global counts worldwide coverage. Both adds them together, so global stories can dominate busy topics.`,
 'nav.today':`Today`,'nav.explore':`Explore`,'nav.culture':`Culture`,'nav.data':`Data & rules`,
 'lv.simple':`Simple`,'lv.standard':`Standard`,'lv.pro':`Pro`,'lang.label':`Language`,
-'hint.simple':`Plain-language view. Tap any card for ideas.`,'hint.standard':`Adds scores and numbers.`,'hint.pro':`Adds confidence, signals and technical detail.`,
+'hint.simple':`Simple: topic, what it is, and how hot it is. Tap a card for ideas.`,'hint.standard':`Standard: adds the score chips (z, tone, opportunity) and counts.`,'hint.pro':`Pro: adds velocity, confidence, Google Trends and Wikipedia signals.`,
 'toast.lang':`Language: English`,'all':`All`,'up':`up`,'down':`down`,
 'c.notranked':`not ranked`,'c.tone':`tone`,'c.oppscore':`opportunity score`,'c.vel':`velocity`,'c.conf':`confidence`,
 'conf.0':`suppressed`,'conf.1':`full`,'conf.5':`indicative`,'c.spike':`search spike`,'c.quiet':`quiet`,'c.hot':`unusually hot`,
@@ -387,7 +393,7 @@ en:{
 'opp.high':`High opportunity`,'opp.mid':`Medium opportunity`,'opp.low':`Low opportunity`,
 't.live':`Live · updated {gen}`,'t.hero':`What Malaysia is talking about`,
 't.herop':`{n} topics are heating up. Biggest mover: <b>{a}</b>. Easiest win for a post: <b>{b}</b>.`,
-'t.stat1':`topics watched`,'t.stat2':`stories read`,'t.stat3':`heating up`,
+'h.std':`{n}-day window · {sc} news · {b} exploding`,'h.pro':`History {d} of {m} days for full confidence · Google Trends on {t} topics · Wikipedia on {w} · {q} too quiet to score`,'t.stat1':`topics watched`,'t.stat2':`stories read`,'t.stat3':`heating up`,
 't.picks':`Post about this today`,'t.picks.s':`low competition, rising interest`,
 't.shareimg':`📤 Share image`,'t.copycap':`📋 Copy caption`,'t.hotnow':`🔥 Hot right now`,
 't.mood':`🌡️ Mood of Malaysia`,'t.mood.s':`tone of the headlines`,
@@ -459,7 +465,7 @@ ms:{
 'g.scope':`Skop berita`,'g.scope.d':`Malaysia hanya mengira edisi Malaysia Google News. Global mengira liputan seluruh dunia. Kedua-duanya menambah kedua-duanya, jadi cerita global boleh mendominasi topik sibuk.`,
 'nav.today':`Hari ini`,'nav.explore':`Terokai`,'nav.culture':`Budaya`,'nav.data':`Data & peraturan`,
 'lv.simple':`Mudah`,'lv.standard':`Standard`,'lv.pro':`Pro`,'lang.label':`Bahasa`,
-'hint.simple':`Paparan bahasa mudah. Ketik mana-mana kad untuk idea.`,'hint.standard':`Tambah skor dan nombor.`,'hint.pro':`Tambah tahap keyakinan, isyarat dan butiran teknikal.`,
+'hint.simple':`Mudah: topik, apa itu, dan seberapa panas. Ketik kad untuk idea.`,'hint.standard':`Standard: tambah cip skor (z, nada, peluang) dan kiraan.`,'hint.pro':`Pro: tambah halaju, keyakinan, isyarat Google Trends dan Wikipedia.`,
 'toast.lang':`Bahasa: Bahasa Malaysia`,'all':`Semua`,'up':`naik`,'down':`turun`,
 'c.notranked':`tidak diberi ranking`,'c.tone':`nada`,'c.oppscore':`skor peluang`,'c.vel':`halaju`,'c.conf':`keyakinan`,
 'conf.0':`dikecualikan`,'conf.1':`penuh`,'conf.5':`petunjuk`,'c.spike':`lonjakan carian`,'c.quiet':`senyap`,'c.hot':`luar biasa panas`,
@@ -467,7 +473,7 @@ ms:{
 'opp.high':`Peluang tinggi`,'opp.mid':`Peluang sederhana`,'opp.low':`Peluang rendah`,
 't.live':`Langsung · dikemas kini {gen}`,'t.hero':`Apa yang rakyat Malaysia bualkan`,
 't.herop':`{n} topik semakin hangat. Pergerakan terbesar: <b>{a}</b>. Paling mudah untuk disiarkan: <b>{b}</b>.`,
-'t.stat1':`topik dipantau`,'t.stat2':`berita dibaca`,'t.stat3':`semakin hangat`,
+'h.std':`Tempoh {n} hari · berita {sc} · {b} meletup`,'h.pro':`Sejarah {d} daripada {m} hari untuk keyakinan penuh · Google Trends pada {t} topik · Wikipedia pada {w} · {q} terlalu senyap untuk dinilai`,'t.stat1':`topik dipantau`,'t.stat2':`berita dibaca`,'t.stat3':`semakin hangat`,
 't.picks':`Siarkan tentang ini hari ini`,'t.picks.s':`saingan rendah, minat meningkat`,
 't.shareimg':`📤 Kongsi imej`,'t.copycap':`📋 Salin kapsyen`,'t.hotnow':`🔥 Sedang hangat`,
 't.mood':`🌡️ Emosi Malaysia`,'t.mood.s':`nada tajuk berita`,
@@ -540,6 +546,7 @@ function forecast(s){const y=s.slice(-14),n=y.length,xm=(n-1)/2,ym=mean(y);let n
  const b=nu/de,a=ym-b*xm,sd=Math.sqrt(y.reduce((t,v,i)=>t+(v-(a+b*i))**2,0)/(n-2))||1;
  return Array.from({length:7},(_,j)=>{const m=Math.max(0,a+b*(n+j));return{m,lo:Math.max(0,m-1.64*sd),hi:m+1.64*sd}})}
 const oppX=o=>{const p=opp(o);if(!p)return null;return{s:p.s,t:lang==='ms'?'Peluang '+({High:'tinggi',Medium:'sederhana',Low:'rendah'})[p.t]:p.t+' opportunity'}};
+const about=o=>o.i?(lang==='ms'?o.i[1]:o.i[0]):'';
 function hooks(o){const k=o.k,d=o.d,ms=lang==='ms';
  const fEn={'Cyber Security':'“what to do now” safety checklist','Politics':'“What this means for you” explainer','Economy':'“What it means for your wallet” carousel','Tech & Infra':'30-second explainer','Energy':'one-chart explainer','Safety & Health':'safety checklist reel','Society':'relatable story or reaction','Culture (local)':'maker spotlight or behind-the-scenes','Inbound':'local-twist take'};
  const fMs={'Cyber Security':'senarai semak “apa perlu dibuat sekarang”','Politics':'penjelasan “apa maksudnya untuk anda”','Economy':'karusel “kesan pada poket anda”','Tech & Infra':'penjelasan 30 saat','Energy':'penjelasan dengan satu carta','Safety & Health':'reel senarai semak keselamatan','Society':'cerita atau reaksi yang dekat di hati','Culture (local)':'sorotan pengrajin atau di sebalik tabir','Inbound':'ulasan dengan sentuhan tempatan'};
@@ -549,7 +556,7 @@ function hooks(o){const k=o.k,d=o.d,ms=lang==='ms';
  else if(o.status==='BREAKOUT')h=ms?[`“Semua orang bertanya tentang ${k}. Versi 30 saat.”`,`“${k}: apa yang tidak disebut dalam tajuk berita.”`]:[`“Everyone’s asking about ${k}. The 30-second version.”`,`“${k}: what the headlines are missing.”`];
  else if(o.status==='GROWTH')h=ms?[`“${k} semakin hangat. Ini yang berubah minggu ini.”`,`“3 perkara perlu tahu tentang ${k} sebelum ia tular.”`]:[`“${k} is picking up. Here’s what changed this week.”`,`“3 things to know about ${k} before it blows up.”`];
  else if(o.status==='FADING')h=ms?[`“${k}: situasi terkini.” (rumusan)`,`Panduan sentiasa relevan: “${k}, dijelaskan dengan mudah.”`]:[`“${k}: where things stand now.” (wrap-up)`,`Evergreen guide: “${k}, explained simply.”`];
- else h=ms?[`“${k} dijelaskan dalam bahasa mudah.”`,`“Mitos tentang ${k} yang masih dipercayai ramai.”`]:[`“${k} explained in plain English.”`,`“The ${k} myth people still believe.”`];
+ else h=ms?[`“${k}: apa itu dan kenapa ia penting sekarang.”`,`“Mitos tentang ${k} yang masih dipercayai ramai.”`]:[`“${k}: what it is and why it matters right now.”`,`“The ${k} myth people still believe.”`];
  return{h,fmt:f}}
 function why(o){
  if(o.sparse)return o.dir==='▲'&&o.last7>=8?`Still small, but climbing from a low base. Worth watching.`:`Very little coverage right now. Too early to call a trend.`;
@@ -575,10 +582,11 @@ function card(o,i=0,big=false,rank=1){const op=oppX(o);
   <div class="grow"><div class="kw">${esc(o.k)}</div>
    <div style="margin-top:3px">${pill(o)}</div></div>
   ${spark(o.s)}</div>
+ ${about(o)?`<div class="about">${esc(about(o))}</div>`:''}
  <div class="sub">${talk(o)} · ${dirW(o)} ${o.dir} · ${t('c.mood')} ${mood(o.sent)}</div>
  ${o.sig?`<div style="margin-top:6px"><span class="pill BASELINE">${o.sig==='gl'?'🌐':o.sig==='my'?'🇲🇾':'🌐🇲🇾'} ${t('sig.'+o.sig)}</span></div>`:''}
- <div class="std tag" style="margin-top:3px">${HAS_GL&&o.gs?`🇲🇾 ${o.lastMY} · 🌐 ${o.lastGL} · `:''}${o.sparse?t('c.notranked'):`z ${fmt(o.z)} · ${t('c.tone')} ${o.sent.toFixed(2)} · ${t('c.oppscore')} ${o.gap}`}</div>
- <div class="pro tag">${t('c.vel')} ${o.vel>0?'+':''}${o.vel} · ${t('c.conf')} ${t('conf.'+(o.conf===0?'0':o.conf===1?'1':'5'))}${o.zt>2?' · '+t('c.spike'):''}</div>
+ <div class="std cps">${HAS_GL&&o.gs?`<span class="cp"><i>🇲🇾</i>${o.lastMY}</span><span class="cp"><i>🌐</i>${o.lastGL}</span>`:''}${o.sparse?`<span class="cp">${t('c.notranked')}</span>`:`<span class="cp"><i>z</i>${fmt(o.z)}</span><span class="cp"><i>${t('c.tone')}</i>${o.sent.toFixed(2)}</span><span class="cp"><i>${t('c.oppscore')}</i>${o.gap}</span>`}</div>
+ <div class="pro pp"><div><span>${t('c.vel')}</span> ${o.vel>0?'+':''}${o.vel}</div><div><span>${t('c.conf')}</span> ${t('conf.'+(o.conf===0?'0':o.conf===1?'1':'5'))}</div><div><span>${t('s.gt')} z</span> ${o.zt==null?'–':fmt(o.zt)}</div><div><span>${t('s.wiki')} z</span> ${o.zw==null?'–':fmt(o.zw)}</div><div><span>${t('s.tg')}</span> ${o.tg==null?'–':fmt(o.tg)+'%'}</div><div><span>${t('c.spike')}</span> ${o.zt>2?'✓':'–'}</div></div>
  ${o.sparse?'':`<div class="heat"><i style="left:${heatPos(o)}%"></i></div><div class="heatl"><span>${t('c.quiet')}</span><span>${t('c.hot')}</span></div>`}
  ${op?`<div class="opp"><span class="stars">${op.s}</span> ${op.t}<span class="sm tag" style="font-weight:500">${t('c.lowcomp')}</span></div>`:''}
  ${big?`<div class="idea">💡 ${esc(hooks(o).h[0])}</div>`:''}
@@ -607,7 +615,9 @@ function today(){
   <p>${t('t.herop',{n:hotL.length,a:esc(hotL[0]?hotL[0].k:'–'),b:esc(picks[0]?picks[0].k:'–')})}</p>
   <div class="stats3"><div><b data-count="${KW.length}">0</b><span>${t('t.stat1')}</span></div>
    <div><b data-count="${sum(tot)}">0</b><span>${t('t.stat2')}</span></div>
-   <div><b data-count="${hotL.length}">0</b><span>${t('t.stat3')}</span></div></div></div>
+   <div><b data-count="${hotL.length}">0</b><span>${t('t.stat3')}</span></div></div>
+  <div class="herolv std">${t('h.std',{n:N,sc:t('scope.'+scope),b:live.filter(o=>o.status==='BREAKOUT').length})}</div>
+  <div class="herolv pro">${t('h.pro',{d:N,m:FULL_DAYS,t:KW.filter(o=>o.t).length,w:KW.filter(o=>o.w).length,q:KW.length-live.length})}</div></div>
  <div class="ticker up" style="--i:1"><div>${tk}${tk}</div></div>
  <h3 class="sec">🎯 ${t('t.picks')} <small>${t('t.picks.s')}</small></h3>
  ${picks.map((o,i)=>card(o,i+2,true,i+1)).join('')}
@@ -715,7 +725,8 @@ function openK(k){const o=byK(k);if(!o)return;curK=k;const n=o.s.length,canF=!o.
  const sig=(nm,s,z)=>s?`<div class="line"><span style="min-width:110px" class="tag">${nm}</span>${spark(s,110,26)}<b>${fmt(z)}</b><span class="tag">z</span></div>`:`<div class="line"><span class="tag">${t('s.nodata',{nm})}</span></div>`;
  $('#sheet').innerHTML=`<div class="grab"></div><button class="x" data-close>✕</button>
  <div class="row"><div class="ic">${EM[o.d]||'📌'}</div><div class="grow"><div class="kw" style="font-size:20px">${esc(o.k)}</div><div style="margin-top:3px">${pill(o)}</div></div></div>
- <p class="sub" style="margin-top:10px">${esc(t('s.why',{why:whyX(o),talk:talk(o),n:o.last,dir:dirW(o)}))}</p>
+ ${about(o)?`<p class="about" style="margin-top:10px">${esc(about(o))}</p>`:''}
+ <p class="sub" style="margin-top:6px">${esc(t('s.why',{why:whyX(o),talk:talk(o),n:o.last,dir:dirW(o)}))}</p>
  <svg viewBox="0 0 ${W} ${H}">${extra}<path class="draw" pathLength="1" d="${hist}" fill="none" stroke="var(--acc)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
  <div class="tag" style="display:flex;justify-content:space-between"><span>${t('s.last',{n})}</span><span>${trend?trend:t('s.tooearly')}</span></div>
  <div class="stats4 std"><div><b>${o.last}</b><span>${t('s.yest')}</span></div><div><b>${o.sparse?'–':fmt(o.z)}</b><span>${t('s.z')}</span></div><div><b>${o.sent.toFixed(2)}</b><span>${t('s.tone')}</span></div><div><b>${o.gap==null?'–':o.gap}</b><span>${t('s.opp')}</span></div></div>
@@ -798,7 +809,8 @@ function drawShare(items){
   if(bh>90){g.fillStyle='#eef1f8';rrect(g,px,by,cw-96,bh,28);g.fill();
    g.fillStyle='#1e2433';g.font='italic '+R(fs);
    const mw=cw-96-64,hk=hooks(o),cap=Math.max(1,Math.floor((bh-(single?48:30))/lh));
-   const hl=single?[...wrapLines(g,'💡 '+hk.h[0],mw,3),'',...wrapLines(g,'💡 '+hk.h[1],mw,3),'',...wrapLines(g,(lang==='ms'?'Format terbaik: ':'Best format: ')+hk.fmt,mw,2)].slice(0,cap):wrapLines(g,'💡 '+hk.h[0],mw,cap);
+   const ab=about(o);
+   const hl=single?[...(ab?[...wrapLines(g,ab,mw,3),'']:[]),...wrapLines(g,'💡 '+hk.h[0],mw,3),'',...wrapLines(g,(lang==='ms'?'Format terbaik: ':'Best format: ')+hk.fmt,mw,2)].slice(0,cap):wrapLines(g,ab||('💡 '+hk.h[0]),mw,cap);
    hl.forEach((t,k)=>g.fillText(t,px+32,by+(single?62:50)+k*lh))}
  });
  g.fillStyle='#ffffff';g.font=B(32);g.fillText((lang==='ms'?'Dikemas kini ':'Updated ')+DATA.gen,70,H-92);
@@ -911,7 +923,7 @@ def main():
         return counts, top, (round(sum(recent) / len(recent), 3) if recent else 0)
     for k, dom, pipe in KEYWORDS:
         counts, top, sent = digest("", k)
-        out[k] = {"k": k, "d": dom, "p": pipe, "s": counts, "w": None, "t": None, "tg": None, "sent": sent, "h": top}
+        out[k] = {"k": k, "d": dom, "p": pipe, "i": list(TOPICS[k]) if k in TOPICS else None, "s": counts, "w": None, "t": None, "tg": None, "sent": sent, "h": top}
         if has_g(k):
             gc, gtop, gsent = digest(gpref(k), k)
             out[k].update({"gs": gc, "gh": gtop, "gsent": gsent})

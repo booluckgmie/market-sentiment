@@ -26,75 +26,11 @@ MON_EN = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
 MON_MS = "Jan Feb Mac Apr Mei Jun Jul Ogo Sep Okt Nov Dis".split()
 
 
-# Plain-English "what is this?" line for each tracked topic (English, Bahasa Malaysia). Used in the picture and in hooks.
-TOPICS = {
- "Melaka polls": ("Melaka state election news: parties, candidates and campaign moves.", "Berita pilihan raya negeri Melaka: parti, calon dan kempen."),
- "Budget 2027": ("Malaysia's federal budget for 2027: taxes, aid and government spending.", "Belanjawan persekutuan 2027: cukai, bantuan dan perbelanjaan kerajaan."),
- "Najib": ("News on former prime minister Najib Razak, mainly his court cases and sentence.", "Berita bekas perdana menteri Najib Razak, terutama kes mahkamah dan hukumannya."),
- "MCMC": ("The regulator for internet, telcos and online content in Malaysia.", "Pengawal selia internet, telco dan kandungan dalam talian di Malaysia."),
- "rural projects": ("Government building projects in rural areas: roads, water, electricity and internet.", "Projek kerajaan di luar bandar: jalan, air, elektrik dan internet."),
- "Online Safety Act": ("The new law making social media platforms responsible for harmful content.", "Undang-undang baharu yang menjadikan platform media sosial bertanggungjawab atas kandungan berbahaya."),
- "subsidy": ("Government price support, such as for fuel and cooking essentials.", "Bantuan harga kerajaan, contohnya untuk minyak dan barang keperluan."),
- "SST": ("Sales and Service Tax, the tax added to many goods and services.", "Cukai Jualan dan Perkhidmatan, cukai ke atas banyak barang dan perkhidmatan."),
- "OPR": ("The Overnight Policy Rate, the interest rate set by Bank Negara that guides loans and savings.", "Kadar Dasar Semalaman, kadar faedah Bank Negara yang mempengaruhi pinjaman dan simpanan."),
- "Bursa": ("Bursa Malaysia, the stock exchange, and how listed shares are moving.", "Bursa Malaysia, bursa saham negara, dan pergerakan saham tersenarai."),
- "ringgit": ("The Malaysian currency and its exchange rate against the US dollar.", "Mata wang Malaysia dan kadar pertukarannya berbanding dolar AS."),
- "Yinson": ("A Malaysian energy company that runs floating oil-production ships and green energy.", "Syarikat tenaga Malaysia yang mengendalikan kapal pengeluaran minyak terapung dan tenaga hijau."),
- "ViTrox": ("A Penang tech company making inspection machines for chip and electronics factories.", "Syarikat teknologi Pulau Pinang yang membuat mesin pemeriksaan untuk kilang cip dan elektronik."),
- "palm oil": ("Malaysia's major export crop: prices, exports and plantation news.", "Tanaman eksport utama Malaysia: harga, eksport dan berita ladang."),
- "EPF": ("The Employees Provident Fund, Malaysia's main retirement savings scheme.", "Kumpulan Wang Simpanan Pekerja, skim simpanan persaraan utama Malaysia."),
- "cost of living": ("Everyday prices, wages and how far household money stretches.", "Harga harian, gaji dan seberapa jauh wang isi rumah boleh pergi."),
- "hyperscale data centre": ("Huge cloud data centres being built in Malaysia, mainly in Johor.", "Pusat data awan bersaiz besar yang dibina di Malaysia, terutamanya di Johor."),
- "data centre": ("Buildings full of servers that run the internet and AI, and their power and water needs.", "Bangunan penuh pelayan yang menjalankan internet dan AI, serta keperluan elektrik dan airnya."),
- "AI": ("Artificial intelligence: new tools, jobs, rules and risks.", "Kecerdasan buatan: alat baharu, pekerjaan, peraturan dan risiko."),
- "Google Malaysia": ("Google's investments, cloud and data centre plans in Malaysia.", "Pelaburan, awan dan rancangan pusat data Google di Malaysia."),
- "Mutiara Line": ("Penang's planned light rail (LRT) line across the island.", "Laluan transit aliran ringan (LRT) yang dirancang merentasi Pulau Pinang."),
- "ECRL": ("The East Coast Rail Link, a railway joining Port Klang to Kota Bharu.", "Laluan Rel Pantai Timur yang menghubungkan Pelabuhan Klang ke Kota Bharu."),
- "Petronas": ("Malaysia's national oil and gas company.", "Syarikat minyak dan gas nasional Malaysia."),
- "Petron": ("The Petron fuel station brand in Malaysia, including pump prices and promotions.", "Jenama stesen minyak Petron di Malaysia, termasuk harga dan promosi."),
- "scam": ("Phone, SMS and online scams that trick people out of money.", "Penipuan telefon, SMS dan dalam talian yang menipu orang daripada wang mereka."),
- "mule account": ("Bank accounts, often rented out, used to move money stolen in scams.", "Akaun bank, selalunya disewakan, yang digunakan untuk memindahkan wang hasil penipuan."),
- "vape": ("Vape rules, bans and health concerns.", "Peraturan, larangan dan kebimbangan kesihatan berkaitan vape."),
- "banjir": ("Floods: warnings, evacuations and relief.", "Banjir: amaran, pemindahan dan bantuan."),
- "dengue": ("The mosquito-borne fever: case numbers and prevention.", "Demam denggi yang dibawa nyamuk: jumlah kes dan pencegahan."),
- "haze": ("Smoke pollution that worsens air quality, and the API readings that track it.", "Pencemaran asap yang menjejaskan kualiti udara dan bacaan IPU yang menjejakinya."),
- "Daiso": ("The Japanese variety-store chain with many outlets across Malaysia.", "Rangkaian kedai serbaneka Jepun dengan banyak cawangan di Malaysia."),
- "cyberattack": ("Hacking attacks that knock out or break into computer systems.", "Serangan godam yang melumpuhkan atau menceroboh sistem komputer."),
- "data breach": ("When private customer or staff data is exposed or stolen.", "Apabila data peribadi pelanggan atau kakitangan terdedah atau dicuri."),
- "cybersecurity": ("Protecting computers, accounts and data from attack.", "Melindungi komputer, akaun dan data daripada serangan."),
- "hackers": ("People who break into systems or accounts, and what they target.", "Individu yang menceroboh sistem atau akaun, dan sasaran mereka."),
- "cybercrime": ("Crimes done online, from fraud to hacking.", "Jenayah dalam talian, daripada penipuan hingga penggodaman."),
- "online fraud": ("Fake sellers, fake investments and other online cheating.", "Penjual palsu, pelaburan palsu dan penipuan dalam talian yang lain."),
- "ransomware": ("Malware that locks a victim's files and demands payment to unlock them.", "Perisian hasad yang mengunci fail mangsa dan menuntut bayaran untuk membukanya."),
- "phishing": ("Fake emails or messages that trick you into giving away passwords or card details.", "E-mel atau mesej palsu yang memperdaya anda memberi kata laluan atau butiran kad."),
- "malware": ("Harmful software that spies on or damages your device.", "Perisian berbahaya yang mengintip atau merosakkan peranti anda."),
- "deepfake": ("AI-made fake videos, photos or voices that look real.", "Video, gambar atau suara palsu buatan AI yang kelihatan seperti benar."),
- "data leak": ("Private information exposed online, often by mistake.", "Maklumat peribadi terdedah dalam talian, selalunya secara tidak sengaja."),
- "NACSA": ("The National Cyber Security Agency, Malaysia's cyber defence body.", "Agensi Keselamatan Siber Negara, badan pertahanan siber Malaysia."),
- "Bank Rakyat": ("The Malaysian cooperative bank: financing, profits and customer news.", "Bank koperasi Malaysia: pembiayaan, keuntungan dan berita pelanggan."),
- "songket": ("Traditional hand-woven Malay fabric with gold or silver threads.", "Kain tenunan tangan tradisional Melayu dengan benang emas atau perak."),
- "batik": ("Cloth decorated with wax-resist dyed patterns, a classic Malaysian craft.", "Kain berhias corak pewarna lilin, kraf klasik Malaysia."),
- "kebaya": ("The fitted traditional blouse worn with a sarong, now a fashion favourite.", "Baju tradisional ketat yang dipakai dengan kain sarung, kini fesyen pilihan."),
- "tenun": ("Hand-woven textiles, a craft with long traditions in places like Terengganu and Sarawak.", "Tekstil tenunan tangan, kraf yang berakar lama di tempat seperti Terengganu dan Sarawak."),
- "wayang kulit": ("Traditional shadow-puppet theatre from the east coast.", "Teater boneka bayang tradisional dari pantai timur."),
- "wau": ("The traditional Malaysian kite, a Kelantan and Terengganu icon.", "Layang-layang tradisional Malaysia, ikon Kelantan dan Terengganu."),
- "Kraftangan": ("Kraftangan Malaysia, the agency that promotes local handicrafts.", "Kraftangan Malaysia, agensi yang mempromosikan kraf tangan tempatan."),
- "Ilham Gallery": ("A Kuala Lumpur art gallery known for its exhibitions of Malaysian art.", "Galeri seni Kuala Lumpur yang terkenal dengan pameran seni Malaysia."),
- "quiet luxury": ("A plain, logo-free style that signals quality without showing off.", "Gaya ringkas tanpa logo yang menonjolkan mutu tanpa bermegah."),
- "old money": ("A classic, understated look inspired by inherited wealth, with neutral colours and tailoring.", "Gaya klasik yang bersahaja, diilhamkan daripada kekayaan warisan, dengan warna neutral dan potongan kemas."),
- "coquette": ("A soft, girly style full of bows, lace and pastel colours.", "Gaya lembut dan feminin dengan reben, renda dan warna pastel."),
- "streetwear": ("Casual, sneaker-and-hoodie fashion that grew out of street and skate culture.", "Fesyen santai berkasut sukan dan hoodie yang berasal daripada budaya jalanan dan skate."),
- "Y2K": ("Fashion and design nostalgia for the early 2000s.", "Nostalgia fesyen dan reka bentuk awal tahun 2000-an."),
- "mob wife": ("A bold, glam look with fur coats, animal print and big jewellery.", "Gaya berani dan glamor dengan kot bulu, corak haiwan dan perhiasan besar."),
- "K-pop": ("Korean pop music, idol groups and their fandoms.", "Muzik pop Korea, kumpulan idola dan peminat mereka."),
- "Premier League": ("England's top football league, hugely popular in Malaysia.", "Liga bola sepak tertinggi England, sangat popular di Malaysia."),
- "F1": ("Formula 1 motor racing: races, drivers and teams.", "Perlumbaan Formula 1: perlumbaan, pemandu dan pasukan."),
- "Thai BL": ("Thai boys'-love drama series and their fan following.", "Siri drama cinta lelaki-lelaki Thailand dan peminatnya."),
-}
+from topics import TOPICS
 
 def desc(o, lang):
     """Plain-English description of the topic. Falls back to the category if a topic has no entry."""
-    t = TOPICS.get(o["k"])
+    t = o.get("i") or TOPICS.get(o["k"])
     if t: return t[1] if lang == "ms" else t[0]
     return (f"Berita dan carian berkaitan {o['k']} ({o['d']})." if lang == "ms" else f"News and searches about {o['k']} ({o['d']}).")
 
