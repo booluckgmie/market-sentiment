@@ -14,7 +14,7 @@ set -euo pipefail
 REPO="${REPO:-https://github.com/booluckgmie/market-sentiment.git}"
 MSG="${1:-Update Malaysia Trend Radar}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FILES=(refresh.py notify.py requirements.txt README.md .gitignore publish.sh vercel.json .github/workflows/daily.yml listener_live.html)
+FILES=(refresh.py notify.py requirements.txt README.md .gitignore publish.sh vercel.json .github/workflows/daily.yml index.html)
 
 command -v git >/dev/null || { echo "git is not installed."; exit 1; }
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
