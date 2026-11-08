@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "exit 0"
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [{ "source": "/", "destination": "/listener_live.html" }]
 }
