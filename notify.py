@@ -159,6 +159,7 @@ def compute(d, scope="both"):
         o["status"] = ("SPARSE" if o["sparse"] else "BREAKOUT" if (o["z"] > 2 and o["vel"] > 0)
                        else "GROWTH" if (o["z"] > .5 and o["vel"] >= 0) else "FADING" if (o["z"] < -1 and o["vel"] < 0) else "BASELINE")
         seg = s[-21:-7]; p14 = (mean(seg) if seg else 0) or .1; r = mean(s[-7:]) / p14
+        o["ratio"] = r
         o["dir"] = "▲" if r > 1.15 else "▼" if r < .85 else "▬"
         o["supply"] = tt / tmax
         o["raw"] = None if o["sparse"] else clamp(o["z"], 0, 3) / 3 * (1 - o["supply"]) * (.25 + abs(o["sent"]))
@@ -196,38 +197,91 @@ def fdate(iso, lang):
     d = dt.date.fromisoformat(iso); m = (MON_MS if lang == "ms" else MON_EN)[d.month - 1]
     return f"{d.day} {m} {d.year}"
 
+ANGLES = {   # content angles by domain, English / Bahasa Malaysia. {k} = topic. Rotated daily so the brief never reads the same twice.
+ "Politics": (["What {k} means for ordinary Malaysians, in 30 seconds", "Everyone is arguing about {k}. Here is the part nobody explains", "3 things to know about {k} before the next headline"],
+              ["Apa maksud {k} untuk rakyat biasa, dalam 30 saat", "Semua orang bertegang urat tentang {k}. Ini bahagian yang jarang dijelaskan", "3 perkara tentang {k} sebelum tajuk berita seterusnya"]),
+ "Economy": (["What {k} means for your wallet this month", "{k}: the number everyone is watching, explained simply", "Should you care about {k}? A quick reality check"],
+             ["Apa kesan {k} pada poket anda bulan ini", "{k}: angka yang semua orang tunggu, dijelaskan dengan mudah", "Perlukah anda ambil peduli tentang {k}? Semakan pantas"]),
+ "Tech & Infra": (["{k} is changing Malaysia faster than you think", "What {k} really means for your daily life", "{k} in 30 seconds: hype versus reality"],
+                  ["{k} mengubah Malaysia lebih pantas daripada sangkaan anda", "Apa sebenarnya maksud {k} dalam hidup harian anda", "{k} dalam 30 saat: gah atau realiti"]),
+ "Energy": (["Why {k} matters at the pump and on your bill", "{k}: who wins and who pays", "The simple story behind {k}"],
+            ["Kenapa {k} penting di stesen minyak dan pada bil anda", "{k}: siapa untung dan siapa menanggung", "Kisah ringkas di sebalik {k}"]),
+ "Safety & Health": (["Protect your family: what to know about {k} right now", "{k}: the warning signs most people miss", "A 1-minute safety check on {k}"],
+                     ["Lindungi keluarga: apa perlu diketahui tentang {k} sekarang", "{k}: tanda amaran yang sering terlepas pandang", "Semakan keselamatan 1 minit tentang {k}"]),
+ "Society": (["Why everyone in Malaysia is talking about {k}", "{k}: the story behind the queue", "What {k} says about how we shop now"],
+             ["Kenapa semua orang di Malaysia bercakap tentang {k}", "{k}: kisah di sebalik barisan panjang", "Apa yang {k} beritahu tentang cara kita membeli-belah"]),
+ "Cyber Security": (["Could this happen to you? What {k} means for your phone and bank", "3 signs you are being targeted by {k}", "{k} explained: how to protect yourself in 2 minutes"],
+                    ["Boleh jadi pada anda? Apa maksud {k} untuk telefon dan bank anda", "3 tanda anda menjadi sasaran {k}", "{k} dijelaskan: cara melindungi diri dalam 2 minit"]),
+ "Culture (local)": (["The story behind {k} that most people never hear", "{k} is trending again. Here is why it deserves your attention", "Meet the makers keeping {k} alive"],
+                     ["Kisah di sebalik {k} yang jarang didengar", "{k} kembali tular. Sebab ia layak anda perhatikan", "Kenali pembuat yang memelihara {k}"]),
+ "Inbound": (["Everyone is talking about {k}. Here is the Malaysian take", "{k}: how to try the trend with a local twist", "Why {k} is blowing up, and how to wear it locally"],
+             ["Semua orang bercakap tentang {k}. Ini versi Malaysia", "{k}: cara cuba trend ini dengan sentuhan tempatan", "Kenapa {k} meletup, dan cara menggayakannya secara tempatan"]),
+}
+
+def angle(o, lang, i):
+    """Pick a different angle each day and for each slot, so the message stays fresh."""
+    en, ms_ = ANGLES.get(o["d"], (["The 30-second version of {k}", "What changed with {k} this week", "{k}: what you need to know today"],
+                                  ["Versi 30 saat tentang {k}", "Apa yang berubah dengan {k} minggu ini", "{k}: apa perlu anda tahu hari ini"]))
+    opts = ms_ if lang == "ms" else en
+    return opts[(dt.date.today().toordinal() + i) % len(opts)].format(k=o["k"])
+
+def mood_txt(o, lang):
+    v = o["sent"]; ms = lang == "ms"
+    return (("bimbang 😟" if ms else "worried 😟") if v < -.15 else ("positif 😊" if ms else "upbeat 😊") if v > .15 else ("bercampur 😐" if ms else "mixed 😐"))
+
+def greeting(t, lang):
+    h = t.hour
+    if lang == "ms": return "Selamat pagi" if h < 12 else "Selamat tengah hari" if h < 14 else "Selamat petang" if h < 19 else "Selamat malam"
+    return "Good morning" if h < 12 else "Good afternoon" if h < 18 else "Good evening"
+
+def fday(t, lang):
+    wd = ("Isn Sel Rab Kha Jum Sab Aha" if lang == "ms" else "Mon Tue Wed Thu Fri Sat Sun").split()[t.weekday()]
+    m = (MON_MS if lang == "ms" else MON_EN)[t.month - 1]
+    return f"{wd} {t.day} {m} · {t.strftime('%-I:%M%p').lower()} MYT"
+
+NUMS = ["1️⃣", "2️⃣", "3️⃣"]
+
+def caption(d, lang="en", scope="both"):
+    """Short line shown under the picture."""
+    n = len(picks(compute(json.loads(json.dumps(d)), scope)))
+    return (f"☀️ {n} topik untuk disiarkan hari ini" if lang == "ms" else f"☀️ {n} topics to post about today")
+
 def message(d, lang="en", scope="both", url=""):
     d = json.loads(json.dumps(d))                       # work on a copy
-    kws = compute(d, scope); ms = lang == "ms"; ST = STMS if ms else STEN
-    E = html.escape
-    today = gen_local(d).date().isoformat()
-    scope_txt = {"both": ("Malaysia + worldwide", "Malaysia + seluruh dunia"), "my": ("Malaysia", "Malaysia"), "gl": ("worldwide", "seluruh dunia")}[scope][1 if ms else 0]
-    L = [f"🇲🇾 <b>Trend Radar</b> · {fdate(today, lang)}",
-         f"<i>{'Dikemas kini' if ms else 'Updated'} {fstamp(d, lang)} · {scope_txt}</i>", ""]
+    kws = compute(d, scope); ms = lang == "ms"
+    E = html.escape; t = gen_local(d)
+    L = [f"{'☀️' if t.hour < 18 else '🌙'} <b>{greeting(t, lang)}!</b> <i>{fday(t, lang)}</i>", ""]
     P = picks(kws)
     if P:
-        L.append("🎯 <b>" + ("Siarkan tentang ini hari ini" if ms else "Post about this today") + "</b>")
-        L.append("<i>" + ("Butiran setiap topik ada pada gambar." if ms else "Topic details are in the picture above.") + "</i>")
-        for i, o in enumerate(P, 1):
-            L.append(f"{i}. <b>{E(o['k'])}</b>")
-            L.append(f"   💡 {E(hook(o, lang))}")
+        L.append("<b>" + ("Topik yang patut anda siarkan hari ini 👇" if ms else "What to post about today 👇") + "</b>"); L.append("")
+        for i, o in enumerate(P):
+            L.append(f"{NUMS[i]} <b>{E(o['k'])}</b>")
             h = latest_headline(o)
             if h:
-                ttl = h[1] if len(h[1]) <= 110 else h[1][:107] + "…"
-                L.append(f"   📰 <a href=\"{E(h[3], quote=True)}\">{E(ttl)}</a>" + (f" — {E(h[2])}" if h[2] else ""))
-        L.append("")
-    br = sorted([o for o in kws if o["status"] == "BREAKOUT"], key=lambda o: -o["z"])[:4]
+                ttl = h[1] if len(h[1]) <= 100 else h[1][:97] + "…"
+                L.append(f"📰 <a href=\"{E(h[3], quote=True)}\">{E(ttl)}</a>" + (f" <i>({E(h[2])})</i>" if h[2] else ""))
+            bits = []
+            if o["ratio"] >= 1.3: bits.append((f"{o['ratio']:.1f}× liputan biasa" if ms else f"{o['ratio']:.1f}× its usual coverage") + " 📈")
+            bits.append(("nada berita: " if ms else "mood: ") + mood_txt(o, lang))
+            L.append(" · ".join(bits))
+            L.append(f"✍️ <i>{'Sudut' if ms else 'Angle'}:</i> “{E(angle(o, lang, i))}”"); L.append("")
+    br = sorted([o for o in kws if o["status"] == "BREAKOUT" and o not in P], key=lambda o: -o["z"])[:4]
+    br_all = [o for o in kws if o["status"] == "BREAKOUT"]
     if br:
-        L.append("🔥 <b>" + ("Meletup" if ms else "Breakouts") + "</b>: " + ", ".join(f"{E(o['k'])} ({o['z']:+.1f})" for o in br)); L.append("")
-    gl = sorted([o for o in kws if o["sig"] == "gl"], key=lambda o: -o["zGL"])[:5]
+        L.append(f"🔥 <b>{'Sedang meletup' if ms else 'Exploding right now'}:</b> " + ", ".join(E(o["k"]) for o in br))
+    elif br_all:
+        L.append("🔥 " + ("Topik paling panas hari ini sudah ada di atas." if ms else "The hottest topics are already in your top 3."))
+    gl = sorted([o for o in kws if o["sig"] == "gl" and o not in P], key=lambda o: -o["zGL"])[:4]
     if gl:
-        L.append("🌐 <b>" + ("Mendunia, belum tempatan" if ms else "Going global, not yet local") + "</b>")
-        L += [f"• {E(o['k'])} — 🌐 {o['lastGL']} · 🇲🇾 {o['lastMY']}" for o in gl]; L.append("")
-    my = sorted([o for o in kws if o["sig"] == "my"], key=lambda o: -o["zMY"])[:5]
+        L.append(f"🌐 <b>{'Hangat di luar negara, Malaysia belum ikut' if ms else 'Big abroad, Malaysia has not caught up'}:</b> " + ", ".join(E(o["k"]) for o in gl))
+        L.append("   " + ("Jadilah yang pertama menerangkannya di sini." if ms else "Be the first to explain these locally."))
+    my = sorted([o for o in kws if o["sig"] == "my" and o not in P], key=lambda o: -o["zMY"])[:4]
     if my:
-        L.append("🇲🇾 <b>" + ("Hangat di Malaysia sahaja" if ms else "Malaysia-only buzz") + "</b>")
-        L += [f"• {E(o['k'])} — 🇲🇾 {o['lastMY']} · 🌐 {o['lastGL']}" for o in my]; L.append("")
-    if url: L.append(f"📊 <a href=\"{E(url, quote=True)}\">" + ("Buka papan pemuka" if ms else "Open the dashboard") + "</a>")
+        L.append(f"🇲🇾 <b>{'Hanya hangat di Malaysia' if ms else 'Only buzzing in Malaysia'}:</b> " + ", ".join(E(o["k"]) for o in my))
+    rest = len([o for o in kws if not o["sparse"]]) - len(P)
+    if url:
+        if L[-1] != "": L.append("")
+        L.append(f"👉 <a href=\"{E(url, quote=True)}\">" + (f"Lihat {rest} topik lain dan carta penuh" if ms else f"See the other {rest} topics and full charts") + "</a>")
     L.append("<i>" + ("Isyarat masa kandungan, bukan nasihat kewangan." if ms else "Content-timing signals, not financial advice.") + "</i>")
     text = "\n".join(L)
     return text if len(text) <= 4000 else text[:3990] + "…"
@@ -371,7 +425,7 @@ def main():
     ok = True
     for l, t in zip(langs, texts):
         png = try_image(l)
-        if png: send_photo(png, "🎯 " + ("Siarkan tentang ini hari ini" if l == "ms" else "Post about this today"), token, chat, base)
+        if png: send_photo(png, caption(d, l, scope), token, chat, base)
         ok = send(t, token, chat, base) and ok
     print("Telegram message sent." if ok else "Telegram send failed.")
     return 0 if ok else 1
