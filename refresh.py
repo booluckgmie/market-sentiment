@@ -956,7 +956,9 @@ def main():
     origin = trending_now()
     print(f"origin: {len(origin['items'])} trending-now items")
 
-    payload = {"gen": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    myt = now_utc.astimezone(dt.timezone(dt.timedelta(hours=8)))   # Malaysia time (no daylight saving)
+    payload = {"gen": myt.strftime("%Y-%m-%d %H:%M MYT"), "genIso": now_utc.isoformat(timespec="seconds"),
                "days": [d.isoformat() for d in days], "kw": [out[k] for k in names],
                "origin": origin, "pairs": [list(p) for p in PAIRS], "health": health}
     blob = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
