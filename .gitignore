@@ -1,3 +1,7 @@
 cache.json
 trends_cache.json
+listener.db
+site/
+brief/
 __pycache__/
+*.pyc

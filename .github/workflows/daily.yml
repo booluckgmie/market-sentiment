@@ -1,0 +1,88 @@
+name: Daily Trend Radar refresh
+
+on:
+  schedule:
+    - cron: "0 23 * * *"   # 23:00 UTC = 07:00 Malaysia time (UTC+8)
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write           # needed to update the vercel-site branch
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Keeps the news and Trends caches between runs so each day only fetches what is new.
+      - name: Restore data cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            cache.json
+            trends_cache.json
+          key: radar-cache-${{ github.run_id }}
+          restore-keys: |
+            radar-cache-
+
+      - name: Build the page
+        run: python refresh.py --out site/index.html --data-out brief/data.json
+
+      # Vercel watches this branch. Each day it is replaced by a single fresh commit, so the repo history never grows.
+      - name: Publish to the vercel-site branch
+        run: |
+          printf '{\n  "framework": null,\n  "cleanUrls": true\n}\n' > site/vercel.json
+          cd site
+          git init -q -b vercel-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Update $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" vercel-site
+
+      # Hands the raw data to the Telegram job below.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: brief-data
+          path: brief/data.json
+
+  notify:
+    # Sends the daily brief to Telegram. Does nothing (and does not fail) until you add the two secrets.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      PAGE_URL: ${{ vars.PAGE_URL }}                    # your Vercel address, e.g. https://market-sentiment.vercel.app
+      NOTIFY_LANG: ${{ vars.NOTIFY_LANG || 'en' }}      # en, ms or both
+      NOTIFY_SCOPE: ${{ vars.NOTIFY_SCOPE || 'both' }}  # both, my or gl
+      NOTIFY_IMAGE: ${{ vars.NOTIFY_IMAGE || '1' }}      # 0 = text only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install notifier dependencies
+        run: |
+          pip install requests pillow
+          sudo apt-get install -y fonts-dejavu-core || true
+      - uses: actions/download-artifact@v8
+        with:
+          name: brief-data
+          path: brief
+      - name: Send Telegram brief
+        run: python notify.py --data brief/data.json

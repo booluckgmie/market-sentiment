@@ -860,6 +860,7 @@ def main():
     ap.add_argument("--out", default="listener_live.html")
     ap.add_argument("--no-trends", action="store_true")
     ap.add_argument("--no-global", action="store_true", help="skip worldwide news (Malaysia only)")
+    ap.add_argument("--data-out", default=None, help="also write the raw data as JSON (used by notify.py)")
     a = ap.parse_args()
 
     today = dt.date.today()
@@ -959,6 +960,9 @@ def main():
                "days": [d.isoformat() for d in days], "kw": [out[k] for k in names],
                "origin": origin, "pairs": [list(p) for p in PAIRS], "health": health}
     blob = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    if a.data_out:
+        os.makedirs(os.path.dirname(a.data_out) or ".", exist_ok=True)
+        json.dump(payload, open(a.data_out, "w", encoding="utf-8"), ensure_ascii=False)
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     open(a.out, "w", encoding="utf-8").write(TEMPLATE.replace("__DATA__", blob))
     print(f"wrote {a.out}  ({len(names)} keywords, {len(days)} days)")
