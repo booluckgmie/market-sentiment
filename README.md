@@ -10,7 +10,7 @@ GitHub fetches fresh data, rebuilds the page and hands it to Vercel. Optional da
 ## How the pieces fit
 
 ```
-GitHub Actions (daily)  →  rebuilds `listener_live.html`  →  commits it back to this branch
+GitHub Actions (daily)  →  rebuilds `index.html`  →  commits it back to this branch
                                                        →  Vercel sees the push and deploys it
                          →  notify.py  →  Telegram (optional)
 ```

@@ -3,7 +3,7 @@
 refresh.py — one-command refresh for the MY Trend Listener page.
 
     pip install feedparser requests nltk trendspy
-    python refresh.py                  # writes listener_live.html (21 days)
+    python refresh.py                  # writes index.html (21 days)
     python refresh.py --days 30 --out docs/index.html
     python refresh.py --no-trends      # skip Google Trends (faster, avoids rate limits)
 
@@ -857,7 +857,7 @@ render();
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=21)
-    ap.add_argument("--out", default="listener_live.html")
+    ap.add_argument("--out", default="index.html")
     ap.add_argument("--no-trends", action="store_true")
     ap.add_argument("--no-global", action="store_true", help="skip worldwide news (Malaysia only)")
     ap.add_argument("--data-out", default=None, help="also write the raw data as JSON (used by notify.py)")

@@ -39,14 +39,14 @@ jobs:
             radar-cache-
 
       - name: Build the page
-        run: python refresh.py --out listener_live.html --data-out brief/data.json
+        run: python refresh.py --out index.html --data-out brief/data.json
 
       # Vercel deploys whatever lands on this branch, so commit the refreshed page straight back to it.
       - name: Commit the refreshed page
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add listener_live.html
+          git add index.html
           if git diff --cached --quiet; then echo "no changes"; else
             git commit -q -m "Daily refresh $(date -u +%Y-%m-%d)"
             git pull -q --rebase origin "${{ github.ref_name }}"
