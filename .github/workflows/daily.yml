@@ -39,19 +39,19 @@ jobs:
             radar-cache-
 
       - name: Build the page
-        run: python refresh.py --out site/index.html --data-out brief/data.json
+        run: python refresh.py --out listener_live.html --data-out brief/data.json
 
-      # Vercel watches this branch. Each day it is replaced by a single fresh commit, so the repo history never grows.
-      - name: Publish to the vercel-site branch
+      # Vercel deploys whatever lands on this branch, so commit the refreshed page straight back to it.
+      - name: Commit the refreshed page
         run: |
-          printf '{\n  "framework": null,\n  "cleanUrls": true\n}\n' > site/vercel.json
-          cd site
-          git init -q -b vercel-site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Update $(date -u +%Y-%m-%d)"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" vercel-site
+          git add listener_live.html
+          if git diff --cached --quiet; then echo "no changes"; else
+            git commit -q -m "Daily refresh $(date -u +%Y-%m-%d)"
+            git pull -q --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
 
       # Hands the raw data to the Telegram job below.
       - uses: actions/upload-artifact@v7

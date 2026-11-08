@@ -10,12 +10,12 @@ GitHub fetches fresh data, rebuilds the page and hands it to Vercel. Optional da
 ## How the pieces fit
 
 ```
-GitHub Actions (daily)  →  builds site/index.html  →  force-pushes it to the `vercel-site` branch
+GitHub Actions (daily)  →  rebuilds `listener_live.html`  →  commits it back to this branch
                                                        →  Vercel sees the push and deploys it
                          →  notify.py  →  Telegram (optional)
 ```
-Vercel does not run the Python script itself. It only hosts the finished page, and `vercel-site` always holds a
-single commit, so your repo history stays small.
+Vercel does not run the Python script itself. It only hosts the finished page. The daily commit adds about 260 KB to the repo history, which is fine for years of use.
+(Older steps below that mention a `vercel-site` branch no longer apply.)
 
 ## 1. Push the files to GitHub
 
