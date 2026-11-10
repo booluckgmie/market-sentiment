@@ -2,18 +2,43 @@ name: Daily Trend Radar refresh
 
 on:
   schedule:
-    - cron: "0 23 * * *"   # 23:00 UTC = 07:00 Malaysia time (UTC+8)
-  workflow_dispatch:        # lets you run it by hand from the Actions tab
+    # GitHub often delays or drops scheduled runs that start exactly on the hour, so these use odd minutes.
+    # The later two are backups: the "gate" job skips them when today's refresh already happened.
+    - cron: "17 22 * * *"   # 06:17 Malaysia time (UTC+8)
+    - cron: "47 0 * * *"    # 08:47 Malaysia time (backup)
+    - cron: "17 4 * * *"    # 12:17 Malaysia time (backup)
+  workflow_dispatch:        # lets you run it by hand from the Actions tab (always runs)
 
 permissions:
-  contents: write           # needed to update the vercel-site branch
+  contents: write           # needed to commit the refreshed page back to this branch
 
 concurrency:
   group: refresh
   cancel-in-progress: false
 
 jobs:
+  gate:
+    # Decides whether today's (Malaysia date) refresh still needs to happen, so backup schedules never double-post.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.g.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 30
+      - id: g
+        run: |
+          today=$(TZ=Asia/Kuala_Lumpur date +%F)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run=true
+          elif git log -n 30 --format=%s | grep -q "^Daily refresh $today"; then run=false
+          else run=true; fi
+          echo "Malaysia date $today -> run=$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -48,9 +73,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           if git diff --cached --quiet; then echo "no changes"; else
-            git commit -q -m "Daily refresh $(date -u +%Y-%m-%d)"
-            git pull -q --rebase origin "${{ github.ref_name }}"
-            git push origin "HEAD:${{ github.ref_name }}"
+            git commit -q -m "Daily refresh $(TZ=Asia/Kuala_Lumpur date +%F)"
+            for i in 1 2 3; do
+              git pull -q --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && break
+              echo "push attempt $i failed, retrying"; sleep 5
+            done
           fi
 
       # Hands the raw data to the Telegram job below.
@@ -86,3 +113,20 @@ jobs:
           path: brief
       - name: Send Telegram brief
         run: python notify.py --data brief/data.json
+
+  alert:
+    # If the build fails, tell you on Telegram instead of failing silently. Needs the same two secrets.
+    needs: build
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send failure notice
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$CHAT" ]; then echo "Telegram not configured"; exit 0; fi
+          curl -sS -o /dev/null "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=⚠️ Trend Radar refresh failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
