@@ -2,9 +2,13 @@
 
 Repo: https://github.com/booluckgmie/market-sentiment
 
-A free, self-updating trend dashboard for Malaysian content creators. Every morning (07:00 Malaysia time)
+A free, self-updating trend dashboard for Malaysian content creators. Every morning (from 06:17 Malaysia time)
 GitHub fetches fresh data, rebuilds the page, commits it back to the repo and Vercel deploys it.
 An optional daily brief goes to Telegram.
+
+**Reliability:** GitHub often delays or drops scheduled runs that start exactly on the hour, so the workflow runs at
+06:17, 08:47 and 12:17 Malaysia time. A "gate" job lets only the first one do the work each Malaysia day, so you never get
+two briefs. If the build fails, the Telegram bot sends a ⚠️ message with a link to the failed run.
 
 **Data:** Google News RSS (Malaysian edition and worldwide), Wikipedia pageviews, Google Trends. No API keys.
 All times shown are Malaysia time (MYT, UTC+8).
@@ -117,7 +121,7 @@ Preview without sending: `python refresh.py --data-out brief/data.json` then `py
 - **Worldwide search terms:** edit `GLOBAL_QUERY`. Give a topic its own Google News expression, or `None` to skip worldwide news for Malaysia-specific topics.
 - **Heritage × trend pairings:** edit `PAIRS`.
 - **Telegram content angles:** edit `ANGLES` in `notify.py` (one set of lines per category, English and Bahasa Malaysia).
-- **Run time:** change the `cron` line in `daily.yml` (UTC, so Malaysia time minus 8 hours).
+- **Run time:** change the `cron` lines in `daily.yml` (UTC, so Malaysia time minus 8 hours). Keep odd minutes, not `:00`.
 - **Faster, Malaysia only:** `python refresh.py --no-global`.
 - **Run locally:** `pip install -r requirements.txt`, then `python refresh.py` writes `index.html`.
 
@@ -131,7 +135,7 @@ Preview without sending: `python refresh.py --data-out brief/data.json` then `py
 | Vercel shows a failed Python build | Set **Framework Preset** to **Other** and clear the build overrides. The root `vercel.json` also forces no framework. |
 | Vercel asks for a login | Turn off **Vercel Authentication** in **Settings → Deployment Protection** to make the page public. |
 | Page not updating | Open the Actions tab, check the latest run is green. GitHub pauses scheduled runs on public repos after 60 days with no repo activity; any commit or manual run restarts them. |
-| Scheduled run never starts | The workflow file must be on the default branch (**Settings → Branches**). |
+| Scheduled run never starts | The workflow file must be on the default branch (**Settings → Branches**). GitHub can also delay runs by hours; the backup schedules cover that. Run it by hand from the Actions tab any time. |
 | Telegram does nothing | Both secrets must exist. The notify step prints why in its log. If the chat id is empty, message the bot first. |
 | NLTK cannot download the VADER lexicon | Run `pip install vaderSentiment` once, then copy its `vader_lexicon.txt` into `nltk_data/sentiment/vader_lexicon/`. (GitHub runners download it fine.) |
 
