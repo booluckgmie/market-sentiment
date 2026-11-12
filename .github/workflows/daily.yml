@@ -2,11 +2,11 @@ name: Daily Trend Radar refresh
 
 on:
   schedule:
-    # GitHub often delays or drops scheduled runs that start exactly on the hour, so these use odd minutes.
+    # GitHub often delays or drops scheduled runs, so the main run is followed by two backups.
     # The later two are backups: the "gate" job skips them when today's refresh already happened.
-    - cron: "17 22 * * *"   # 06:17 Malaysia time (UTC+8)
-    - cron: "47 0 * * *"    # 08:47 Malaysia time (backup)
-    - cron: "17 4 * * *"    # 12:17 Malaysia time (backup)
+    - cron: "30 23 * * *"   # 07:30 Malaysia time (UTC+8)
+    - cron: "50 0 * * *"    # 08:50 Malaysia time (backup)
+    - cron: "20 4 * * *"    # 12:20 Malaysia time (backup)
   workflow_dispatch:        # lets you run it by hand from the Actions tab (always runs)
 
 permissions:
