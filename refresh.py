@@ -34,7 +34,7 @@ KEYWORDS = [  # (keyword, domain, pipeline)  N=news/ops, A=local culture, B=inbo
     ("OPR", "Economy", "N"), ("Bursa", "Economy", "N"), ("ringgit", "Economy", "N"), ("Yinson", "Economy", "N"),
     ("ViTrox", "Economy", "N"), ("palm oil", "Economy", "N"), ("EPF", "Economy", "N"), ("cost of living", "Economy", "N"),
     ("hyperscale data centre", "Tech & Infra", "N"), ("data centre", "Tech & Infra", "N"), ("AI", "Tech & Infra", "N"),
-    ("Google Malaysia", "Tech & Infra", "N"), ("Mutiara Line", "Tech & Infra", "N"), ("ECRL", "Tech & Infra", "N"),
+    ("Google Malaysia", "Tech & Infra", "N"), ("Microsoft", "Tech & Infra", "N"), ("Microsoft Malaysia", "Tech & Infra", "N"), ("Mutiara Line", "Tech & Infra", "N"), ("ECRL", "Tech & Infra", "N"),
     ("Petronas", "Energy", "N"), ("Petron", "Energy", "N"),
     ("scam", "Safety & Health", "N"), ("mule account", "Safety & Health", "N"), ("vape", "Safety & Health", "N"),
     ("banjir", "Safety & Health", "N"), ("dengue", "Safety & Health", "N"), ("haze", "Safety & Health", "N"),
@@ -66,6 +66,8 @@ GLOBAL_QUERY = {
     "hyperscale data centre": '"hyperscale data center" OR "hyperscale data centre"',
     "banjir": 'floods "Southeast Asia"',                           # Malay word for flood
     "subsidy": '"fuel subsidy" OR "energy subsidy"',
+    "Microsoft": '"Microsoft" (Azure OR Copilot OR Windows OR "Microsoft 365" OR cloud OR OpenAI)',   # keeps worldwide news on Microsoft products
+    "Microsoft Malaysia": None,
     "SST": None, "EPF": None, "MCMC": None, "NACSA": None, "Melaka polls": None, "Budget 2027": None,
     "rural projects": None, "ECRL": None, "Mutiara Line": None, "Petron": None, "Google Malaysia": None,
     "wau": None, "tenun": None, "Kraftangan": None, "Ilham Gallery": None,
@@ -80,14 +82,14 @@ ORIGIN_DICT = {
     "JP": ["naruto","anime","tokyo","nikkei","japan"],
     "GB": ["arsenal","chelsea","liverpool","manchester","tottenham","newcastle","aston villa","west ham","premier league","epl","verstappen","hamilton","norris","piastri","leclerc","ferrari","mclaren","red bull","mercedes","f1","grand prix","england","london"],
     "ID": ["rupiah","persija","jakarta","indonesia"],
-    "US": ["nba","suns","magic","warriors","heat","lakers","celtics","nfl","nasdaq","trump","wall street","intel","nvidia","elon musk","apple","tesla"],
+    "US": ["microsoft","azure","copilot","nba","suns","magic","warriors","heat","lakers","celtics","nfl","nasdaq","trump","wall street","intel","nvidia","elon musk","apple","tesla"],
     "MY": ["ron95","padu","sst","belanjawan","najib","rafizi","melaka","anthony loke","fahmi fadzil","hannah yeoh","zahid","dewan rakyat","metmalaysia","solat","jumaat","banjir","pdrm","scam","mule account","bursa","jdt","zii jia","songket","batik","kebaya","tenun","wau","wayang kulit","ilham gallery","kraftangan","malaysia","kuala lumpur","petronas","tnb","anwar","umno","bernama"],
 }
 MALAY_WORDS = set("yang dan di untuk dengan kerana tidak ini itu ke dari akan pada sudah kena boleh mana apa siapa kenapa bila berapa harga terkini hari lagi semua negeri".split())
 
 WIKI = {  # optional keyword -> English Wikipedia page
     "Najib": "Najib_Razak", "Yinson": "Yinson", "ringgit": "Malaysian_ringgit", "Bursa": "Bursa_Malaysia",
-    "palm oil": "Palm_oil", "Petronas": "Petronas", "AI": "Artificial_intelligence",
+    "palm oil": "Palm_oil", "Petronas": "Petronas", "AI": "Artificial_intelligence", "Microsoft": "Microsoft",
     "dengue": "Dengue_fever", "haze": "Haze", "ECRL": "East_Coast_Rail_Link", "Daiso": "Daiso",
     "EPF": "Employees_Provident_Fund_(Malaysia)", "ransomware": "Ransomware", "phishing": "Phishing", "malware": "Malware", "deepfake": "Deepfake", "cybersecurity": "Computer_security",
     "MCMC": "Malaysian_Communications_and_Multimedia_Commission",
@@ -149,13 +151,64 @@ def tag_origin(title):
     if len(set(re.findall(r"[a-z]+", t)) & MALAY_WORDS) >= 2: return "MY"
     return None
 
-def trending_now():
+def fetch_range(q, d0, d1):
+    """Google News RSS (Malaysia edition) for a free-text query between two dates."""
+    u = ("https://news.google.com/rss/search?q=" + quote(q) +
+         f"+after:{d0}+before:{d1}&hl=en-MY&gl=MY&ceid=MY:en")
+    for _ in range(3):
+        try:
+            f = feedparser.parse(u)
+            if f.entries or getattr(f, "status", 0) == 200:
+                return [[e.title, e.link] for e in f.entries]
+        except Exception:
+            pass
+        time.sleep(1.5)
+    return None
+
+TLOG = "trending_log.json"   # one line per day of what was trending on Google in Malaysia; committed by the workflow
+
+def trending_now(sia=None, cache=None, top=10):
+    """Today's Google Trends 'trending now' list for Malaysia, studied: news volume this week, mood, headlines, and how
+    many days the term has shown up in the saved log."""
+    today = dt.date.today()
+    out = {"date": today.isoformat(), "items": [], "recurring": []}
     try:
         f = feedparser.parse("https://trends.google.com/trending/rss?geo=MY", request_headers=UA)
-        items = [{"t": e.title, "o": tag_origin(e.title), "v": getattr(e, "ht_approx_traffic", "")} for e in f.entries]
-        return {"date": dt.date.today().isoformat(), "items": items}
+        items = [{"t": e.title, "o": tag_origin(e.title), "v": getattr(e, "ht_approx_traffic", ""),
+                  "n": getattr(e, "ht_news_item_title", ""), "s": getattr(e, "ht_news_item_source", ""),
+                  "u": getattr(e, "ht_news_item_url", "")} for e in f.entries]
     except Exception:
-        return {"date": dt.date.today().isoformat(), "items": []}
+        return out
+    # study each of the top terms: news this week + tone
+    for it in items[:top]:
+        key = f"T|{it['t']}|{today}"
+        ents = cache.get(key) if cache is not None else None
+        if ents is None:
+            ents = fetch_range(f'"{it["t"]}"', today - dt.timedelta(days=7), today + dt.timedelta(days=1))
+            if ents is not None and cache is not None: cache[key] = ents
+        ents = ents or []
+        seen, heads = set(), []
+        for title, link in ents:
+            t = re.sub(r"\s+-\s+[^-]+$", "", title); pub = title.rsplit(" - ", 1)[-1] if " - " in title else ""
+            if t in seen: continue
+            seen.add(t); heads.append([t, pub, link])
+        it["c"] = len(ents)
+        it["h"] = heads[:3]
+        it["sent"] = round(sum(sia.polarity_scores(h[0])["compound"] for h in heads) / len(heads), 3) if (sia and heads) else 0
+    # keep a daily log and count how often each term returns
+    try: log = json.load(open(TLOG))
+    except Exception: log = {}
+    log[today.isoformat()] = [{"t": x["t"], "v": x["v"]} for x in items]
+    for d in sorted(log)[:-60]: del log[d]
+    json.dump(log, open(TLOG, "w"), ensure_ascii=False, indent=0)
+    count = {}
+    for d, rows in log.items():
+        for x in rows: count[x["t"].lower()] = count.get(x["t"].lower(), 0) + 1
+    for it in items: it["seen"] = count.get(it["t"].lower(), 1)
+    out["items"] = items
+    out["recurring"] = sorted([{"t": k, "seen": v} for k, v in count.items() if v >= 2], key=lambda x: -x["seen"])[:8]
+    out["log_days"] = len(log)
+    return out
 
 TEMPLATE = r'''<!DOCTYPE html>
 <html lang="en">
@@ -399,7 +452,7 @@ en:{
 't.mood':`🌡️ Mood of Malaysia`,'t.mood.s':`tone of the headlines`,
 't.worried':`{n} worried`,'t.neutral':`{n} neutral`,'t.upbeat':`{n} upbeat`,
 't.mw':`Most worried about: {a} · Most upbeat: {b}`,
-'t.early':`🌱 Early signals`,'t.early.s':`small but climbing`,'t.thisweek':`▲ {n} this week`,
+'tr.title':`📈 Trending on Google now`,'tr.sub':`what Malaysians are searching today`,'tr.stories':`{n} stories this week`,'tr.seen':`🔁 back {n} days`,'tr.new':`new today`,'tr.mood':`mood`,'tr.none':`No trending searches fetched today.`,'t.early':`🌱 Early signals`,'t.early.s':`small but climbing`,'t.thisweek':`▲ {n} this week`,
 't.foot':`Content-timing signals from public headlines, not financial advice.<br>Want the numbers? Switch to Standard or Pro at the top.`,
 's.hot':`🔥 Hottest`,'s.opp':`🎯 Best opportunity`,'s.talk':`📰 Most talked about`,'s.mood':`😟 Most worried`,
 'e.title':`🔎 Explore topics`,'e.search':`Search a topic…`,'e.nomatch':`Nothing matches. Try another filter.`,
@@ -479,7 +532,7 @@ ms:{
 't.mood':`🌡️ Emosi Malaysia`,'t.mood.s':`nada tajuk berita`,
 't.worried':`{n} bimbang`,'t.neutral':`{n} neutral`,'t.upbeat':`{n} positif`,
 't.mw':`Paling bimbang tentang: {a} · Paling positif: {b}`,
-'t.early':`🌱 Isyarat awal`,'t.early.s':`kecil tetapi meningkat`,'t.thisweek':`▲ {n} minggu ini`,
+'tr.title':`📈 Sedang trending di Google`,'tr.sub':`apa yang rakyat Malaysia cari hari ini`,'tr.stories':`{n} berita minggu ini`,'tr.seen':`🔁 muncul {n} hari`,'tr.new':`baharu hari ini`,'tr.mood':`nada`,'tr.none':`Tiada carian trending diambil hari ini.`,'t.early':`🌱 Isyarat awal`,'t.early.s':`kecil tetapi meningkat`,'t.thisweek':`▲ {n} minggu ini`,
 't.foot':`Isyarat masa kandungan daripada tajuk berita awam, bukan nasihat kewangan.<br>Mahu angka? Tukar ke Standard atau Pro di atas.`,
 's.hot':`🔥 Paling hangat`,'s.opp':`🎯 Peluang terbaik`,'s.talk':`📰 Paling dibualkan`,'s.mood':`😟 Paling bimbang`,
 'e.title':`🔎 Terokai topik`,'e.search':`Cari topik…`,'e.nomatch':`Tiada padanan. Cuba penapis lain.`,
@@ -592,6 +645,12 @@ function card(o,i=0,big=false,rank=1){const op=oppX(o);
  ${big?`<div class="idea">💡 ${esc(hooks(o).h[0])}</div>`:''}
 </div>`}
 
+function trendingBlock(){const it=(DATA.origin&&DATA.origin.items)||[];if(!it.length)return '';
+ return `<h3 class="sec">${t('tr.title')} <small>${t('tr.sub')}</small></h3>`+it.slice(0,6).map((x,i)=>{
+  const h=(x.h&&x.h[0])?{t:x.h[0][0],p:x.h[0][1],u:x.h[0][2]}:{t:x.n||'',p:x.s||'',u:x.u||''};
+  return `<div class="card up" style="--i:${i}"><div class="row"><div class="ic">${i+1}</div><div class="grow"><div class="kw">${esc(x.t)}</div>
+   <div class="sub">${x.v?esc(x.v)+' · ':''}${x.c>1?t('tr.stories',{n:x.c})+' · ':''}${x.sent!=null?t('tr.mood')+' '+mood(x.sent)+' · ':''}${x.seen>1?t('tr.seen',{n:x.seen}):t('tr.new')}</div></div>${x.o?`<span class="og ${x.o}">${x.o}</span>`:''}</div>
+   ${h.t?`<a class="hl" href="${esc(h.u)}" target="_blank" rel="noopener" style="border-top:0;padding-bottom:0">📰 ${esc(h.t)}${h.p?`<small>${esc(h.p)}</small>`:''}</a>`:''}</div>`}).join('')}
 // ---------- TODAY ----------
 let tab='today',dom='All',q='',sortBy='hot';
 function countUp(){document.querySelectorAll('[data-count]').forEach(el=>{const to=+el.dataset.count;
@@ -626,6 +685,7 @@ function today(){
  <div class="scroll">${hotL.slice(0,10).map(o=>`<div class="hot" data-k="${esc(o.k)}">${ST[o.status][1]} ${esc(o.k)} <span class="tag">${o.dir}</span></div>`).join('')}</div>
  ${gl.length?`<h3 class="sec">${t('t.glob')} <small>${t('t.glob.s')}</small></h3><div class="scroll">${gl.slice(0,10).map(o=>`<div class="hot" data-k="${esc(o.k)}">🌐 ${esc(o.k)} <span class="tag">${o.lastGL} 🌐 · ${o.lastMY} 🇲🇾</span></div>`).join('')}</div>`:''}
  ${myo.length?`<h3 class="sec">${t('t.myonly')} <small>${t('t.myonly.s')}</small></h3><div class="scroll">${myo.slice(0,10).map(o=>`<div class="hot" data-k="${esc(o.k)}">🇲🇾 ${esc(o.k)} <span class="tag">${o.lastMY} 🇲🇾 · ${o.lastGL} 🌐</span></div>`).join('')}</div>`:''}
+ ${trendingBlock()}
  <h3 class="sec">${t('t.mood')} <small>${t('t.mood.s')}</small></h3>
  <div class="card"><div class="mood"><i style="width:${neg/live.length*100}%;background:var(--down)"></i><i style="width:${neu/live.length*100}%;background:var(--line)"></i><i style="width:${pos/live.length*100}%;background:var(--up)"></i></div>
   <div class="tag" style="display:flex;justify-content:space-between"><span>😟 ${t('t.worried',{n:neg})}</span><span>😐 ${t('t.neutral',{n:neu})}</span><span>😊 ${t('t.upbeat',{n:pos})}</span></div>
@@ -965,7 +1025,8 @@ def main():
                 rec, prev = sum(ser[-30:]) / 30, sum(ser[:-30]) / max(len(ser) - 30, 1)
                 out[k]["tg"] = round((rec / prev - 1) * 100, 1) if prev > 0 else None
 
-    origin = trending_now()
+    origin = trending_now(sia, cache)
+    json.dump(cache, open(CACHE, "w"))
     print(f"origin: {len(origin['items'])} trending-now items")
 
     now_utc = dt.datetime.now(dt.timezone.utc)

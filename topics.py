@@ -21,6 +21,8 @@ TOPICS = {
  "hyperscale data centre": ("Huge cloud data centres being built in Malaysia, mainly in Johor.", "Pusat data awan bersaiz besar yang dibina di Malaysia, terutamanya di Johor."),
  "data centre": ("Buildings full of servers that run the internet and AI, and their power and water needs.", "Bangunan penuh pelayan yang menjalankan internet dan AI, serta keperluan elektrik dan airnya."),
  "AI": ("Artificial intelligence: new tools, jobs, rules and risks.", "Kecerdasan buatan: alat baharu, pekerjaan, peraturan dan risiko."),
+ "Microsoft": ("The tech giant behind Windows, Office, Azure cloud and Copilot AI.", "Gergasi teknologi di sebalik Windows, Office, awan Azure dan AI Copilot."),
+ "Microsoft Malaysia": ("Microsoft's moves in Malaysia: cloud and data centre investments, AI skilling and local partnerships.", "Langkah Microsoft di Malaysia: pelaburan awan dan pusat data, latihan AI dan kerjasama tempatan."),
  "Google Malaysia": ("Google's investments, cloud and data centre plans in Malaysia.", "Pelaburan, awan dan rancangan pusat data Google di Malaysia."),
  "Mutiara Line": ("Penang's planned light rail (LRT) line across the island.", "Laluan transit aliran ringan (LRT) yang dirancang merentasi Pulau Pinang."),
  "ECRL": ("The East Coast Rail Link, a railway joining Port Klang to Kota Bharu.", "Laluan Rel Pantai Timur yang menghubungkan Pelabuhan Klang ke Kota Bharu."),

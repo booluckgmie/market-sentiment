@@ -214,6 +214,19 @@ def message(d, lang="en", scope="both", url=""):
     my = sorted([o for o in kws if o["sig"] == "my" and o not in P], key=lambda o: -o["zMY"])[:4]
     if my:
         L.append(f"🇲🇾 <b>{'Hanya hangat di Malaysia' if ms else 'Only buzzing in Malaysia'}:</b> " + ", ".join(E(o["k"]) for o in my))
+    tr = (d.get("origin") or {}).get("items") or []
+    if tr:
+        L.append("")
+        L.append("📈 <b>" + ("Sedang trending di Google Malaysia" if ms else "Trending on Google Malaysia right now") + ":</b>")
+        for x in tr[:3]:
+            hh = (x.get("h") or [None])[0]
+            ttl, link = (hh[0], hh[2]) if hh else (x.get("n", ""), x.get("u", ""))
+            extra = f" · {E(x['v'])}" if x.get("v") else ""
+            back = (f" · 🔁 {x['seen']} " + ("hari" if ms else "days")) if x.get("seen", 1) > 1 else ""
+            L.append(f"• <b>{E(x['t'])}</b>{extra}{back}")
+            if ttl and link:
+                ttl = ttl if len(ttl) <= 90 else ttl[:87] + "…"
+                L.append(f"   📰 <a href=\"{E(link, quote=True)}\">{E(ttl)}</a>")
     rest = len([o for o in kws if not o["sparse"]]) - len(P)
     if url:
         if L[-1] != "": L.append("")
