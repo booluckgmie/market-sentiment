@@ -2,16 +2,14 @@
 
 Repo: https://github.com/booluckgmie/market-sentiment
 
-A free, self-updating trend dashboard for Malaysian content creators. Every morning (07:30 Malaysia time)
+A free, self-updating trend dashboard for Malaysian content creators. Every morning (posted at 08:00 Malaysia time)
 GitHub fetches fresh data, rebuilds the page, commits it back to the repo and Vercel deploys it.
 An optional daily brief goes to Telegram.
 
-**Reliability:** GitHub often delays or drops scheduled runs that start exactly on the hour, so the workflow runs at
-07:30, 08:50 and 12:20 Malaysia time. A "gate" job lets only the first one do the work each Malaysia day, so you never get
-two briefs. If the build fails, the Telegram bot sends a ⚠️ message with a link to the failed run.
-
-**Data:** Google News RSS (Malaysian edition and worldwide), Wikipedia pageviews, Google Trends. No API keys.
-All times shown are Malaysia time (MYT, UTC+8).
+**Reliability:** GitHub often starts scheduled runs 3 to 4 hours late, so the workflow has several early runs
+(04:23, 05:23, 06:23 and 07:23 Malaysia time, plus a 12:20 backup). A "gate" job lets only the first one do the work each
+Malaysia day, and the Telegram post is held until **08:00 Malaysia time** if the run started earlier (a late run posts at
+once). If the build fails, the Telegram bot sends a ⚠️ message with a link to the failed run.
 
 ## How the pieces fit
 

@@ -2,18 +2,20 @@ name: Daily Trend Radar refresh
 
 on:
   schedule:
-    # GitHub often delays or drops scheduled runs, so the main run is followed by two backups.
-    # The later two are backups: the "gate" job skips them when today's refresh already happened.
-    - cron: "30 23 * * *"   # 07:30 Malaysia time (UTC+8)
-    - cron: "50 0 * * *"    # 08:50 Malaysia time (backup)
-    - cron: "20 4 * * *"    # 12:20 Malaysia time (backup)
+    # GitHub starts scheduled runs late (often 3 to 4 hours), so several early runs are listed. The first one to start
+    # does the work and the "gate" job skips the rest. The Telegram post is held until 08:00 Malaysia time.
+    - cron: "23 20 * * *"   # 04:23 Malaysia time (UTC+8)
+    - cron: "23 21 * * *"   # 05:23
+    - cron: "23 22 * * *"   # 06:23
+    - cron: "23 23 * * *"   # 07:23
+    - cron: "20 4 * * *"    # 12:20 (last backup)
   workflow_dispatch:        # lets you run it by hand from the Actions tab (always runs)
 
 permissions:
   contents: write           # needed to commit the refreshed page back to this branch
 
 concurrency:
-  group: refresh
+  group: refresh-${{ github.event_name }}   # a manual run never waits behind a scheduled run that is holding for 08:00
   cancel-in-progress: false
 
 jobs:
@@ -90,7 +92,7 @@ jobs:
     # Sends the daily brief to Telegram. Does nothing (and does not fail) until you add the two secrets.
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 300
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -111,6 +113,12 @@ jobs:
         with:
           name: brief-data
           path: brief
+      # Scheduled runs that start early wait here so the post lands at 08:00 Malaysia time. Manual runs and late runs send at once.
+      - name: Hold until 08:00 Malaysia time
+        if: github.event_name == 'schedule'
+        run: |
+          now=$(date +%s); target=$(TZ=Asia/Kuala_Lumpur date -d "08:00 today" +%s); wait=$((target-now))
+          if [ "$wait" -gt 0 ] && [ "$wait" -le 14400 ]; then echo "holding ${wait}s until 08:00 MYT"; sleep "$wait"; else echo "no hold needed (${wait}s)"; fi
       - name: Send Telegram brief
         run: python notify.py --data brief/data.json
 

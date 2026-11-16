@@ -185,7 +185,7 @@ def caption(d, lang="en", scope="both"):
 def message(d, lang="en", scope="both", url=""):
     d = json.loads(json.dumps(d))                       # work on a copy
     kws = compute(d, scope); ms = lang == "ms"
-    E = html.escape; t = gen_local(d)
+    E = html.escape; t = dt.datetime.now(MYT)   # greeting follows the moment of sending, not the build time
     L = [f"{'☀️' if t.hour < 18 else '🌙'} <b>{greeting(t, lang)}!</b> <i>{fday(t, lang)}</i>", ""]
     P = picks(kws)
     if P:
