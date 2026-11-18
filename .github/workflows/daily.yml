@@ -10,6 +10,11 @@ on:
     - cron: "23 23 * * *"   # 07:23
     - cron: "20 4 * * *"    # 12:20 (last backup)
   workflow_dispatch:        # lets you run it by hand from the Actions tab (always runs)
+    inputs:
+      text_only:
+        description: "Post the text message only, without the picture (use to re-send a missing text)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write           # needed to commit the refreshed page back to this branch
@@ -99,7 +104,7 @@ jobs:
       PAGE_URL: ${{ vars.PAGE_URL }}                    # your Vercel address, e.g. https://market-sentiment.vercel.app
       NOTIFY_LANG: ${{ vars.NOTIFY_LANG || 'en' }}      # en, ms or both
       NOTIFY_SCOPE: ${{ vars.NOTIFY_SCOPE || 'both' }}  # both, my or gl
-      NOTIFY_IMAGE: ${{ vars.NOTIFY_IMAGE || '1' }}      # 0 = text only
+      NOTIFY_IMAGE: ${{ (inputs.text_only && '0') || vars.NOTIFY_IMAGE || '1' }}      # 0 = text only
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

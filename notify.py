@@ -14,7 +14,7 @@ Environment variables
 Without a token and chat id the script prints a notice and exits quietly.
 The scoring below mirrors the dashboard, so the message and the page agree.
 """
-import argparse, datetime as dt, html, json, os, sys
+import argparse, datetime as dt, html, json, os, re, sys
 import requests
 
 FULL_DAYS = 45
@@ -182,6 +182,25 @@ def caption(d, lang="en", scope="both"):
     n = len(picks(compute(json.loads(json.dumps(d)), scope)))
     return (f"☀️ {n} topik untuk disiarkan hari ini" if lang == "ms" else f"☀️ {n} topics to post about today")
 
+def visible(text):
+    """Text as Telegram counts it: tags and link addresses do not count toward the 4096-character limit."""
+    return html.unescape(re.sub(r"<[^>]+>", "", text))
+
+def trim(text, limit=3900):
+    """Keep the message under Telegram's limit by dropping whole trailing sections, never by cutting through a tag."""
+    if len(visible(text)) <= limit: return text
+    lines = text.split("\n")
+    foot = [l for l in lines[-3:] if l.startswith(("👉", "<i>Content-timing", "<i>Isyarat"))]
+    body = lines[:len(lines) - len(foot)]
+    room = limit - sum(len(visible(l)) + 1 for l in foot)
+    keep, used = [], 0
+    for l in body:
+        used += len(visible(l)) + 1
+        if used > room: break
+        keep.append(l)
+    while keep and keep[-1] != "": keep.pop()          # end on a section boundary
+    return "\n".join(keep + foot)
+
 def message(d, lang="en", scope="both", url=""):
     d = json.loads(json.dumps(d))                       # work on a copy
     kws = compute(d, scope); ms = lang == "ms"
@@ -233,7 +252,7 @@ def message(d, lang="en", scope="both", url=""):
         L.append(f"👉 <a href=\"{E(url, quote=True)}\">" + (f"Lihat {rest} topik lain dan carta penuh" if ms else f"See the other {rest} topics and full charts") + "</a>")
     L.append("<i>" + ("Isyarat masa kandungan, bukan nasihat kewangan." if ms else "Content-timing signals, not financial advice.") + "</i>")
     text = "\n".join(L)
-    return text if len(text) <= 4000 else text[:3990] + "…"
+    return trim(text)
 
 
 # ---------- picture for Telegram (Pillow; no emoji font required) ----------
@@ -337,8 +356,12 @@ def send_photo(png, caption, token, chat, base):
     return True
 
 def send(text, token, chat, base):
-    r = requests.post(f"{base}/bot{token}/sendMessage", timeout=30,
-                      json={"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True})
+    url = f"{base}/bot{token}/sendMessage"
+    r = requests.post(url, timeout=30, json={"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True})
+    if not r.ok and r.status_code == 400 and "parse entities" in r.text:
+        # never lose the day's text because of a formatting problem: resend it as plain text
+        print(f"Telegram HTML error, resending as plain text: {r.text[:200]}", file=sys.stderr)
+        r = requests.post(url, timeout=30, json={"chat_id": chat, "text": visible(text)[:4096], "disable_web_page_preview": True})
     if not r.ok:
         print(f"Telegram error {r.status_code}: {r.text[:300]}", file=sys.stderr); return False
     return True
